@@ -1,11 +1,13 @@
 services:
     laravel.test:
         build:
-            context: ./docker/local/8.3
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: ./docker/local/8.3/Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
         image: sail-8.3/app
+        ports:
+            - '8734:80'  # Map container port 80 to host port 8734
         labels:
             - "traefik.enable=true"
             - "traefik.docker.network=${NETWORK_NAME}"
@@ -36,7 +38,8 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
             VITE_HOST_NAME: '${VITE_HOST_NAME}'
         volumes:
-            - '.:/var/www/html'
+            - 'sail-storage:/var/www/html/storage'  # Persist storage including OAuth keys
+            - './.env:/var/www/html/.env'  # Mount .env for easy config changes
         networks:
             - sail
             - reverse-proxy
@@ -206,4 +209,6 @@ volumes:
     sail-pgsql-test:
         driver: local
     sail-minio:
+        driver: local
+    sail-storage:
         driver: local

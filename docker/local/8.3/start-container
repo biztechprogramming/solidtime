@@ -15,6 +15,29 @@ fi
 
 chmod -R ugo+rw /.composer
 
+# Run migrations on startup (create database if it doesn't exist and run migrations)
+echo "Creating database if it doesn't exist and running migrations..."
+php /var/www/html/artisan migrate --force 2>/dev/null || {
+    echo "Database might not exist, attempting to create it..."
+    PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USERNAME}" -d postgres -c "CREATE DATABASE ${DB_DATABASE};" 2>/dev/null || true
+    echo "Running migrations..."
+    php /var/www/html/artisan migrate --force
+}
+
+# Ensure storage directories exist (in case volume is empty)
+mkdir -p /var/www/html/storage/framework/{cache,sessions,views}
+mkdir -p /var/www/html/storage/logs
+chown -R sail:sail /var/www/html/storage
+
+# Generate Passport OAuth keys if they don't exist
+if [ ! -f /var/www/html/storage/oauth-private.key ] || [ ! -f /var/www/html/storage/oauth-public.key ]; then
+    echo "Generating Passport OAuth keys..."
+    php /var/www/html/artisan passport:keys --force
+    chown sail:sail /var/www/html/storage/oauth*.key
+    chmod 600 /var/www/html/storage/oauth-private.key
+    chmod 644 /var/www/html/storage/oauth-public.key
+fi
+
 if [ $# -gt 0 ]; then
     if [ "$SUPERVISOR_PHP_USER" = "root" ]; then
         exec "$@"

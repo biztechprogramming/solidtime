@@ -1,0 +1,22 @@
+FROM sail-8.3/app:latest
+
+ARG WWWUSER=1000
+ARG WWWGROUP=1000
+
+WORKDIR /var/www/html
+
+# Copy application files
+COPY --chown=$WWWUSER:$WWWGROUP . .
+
+# Install composer dependencies
+USER sail
+RUN composer install --no-interaction --no-scripts --prefer-dist
+
+# Install npm dependencies and build assets
+RUN npm install && npm run build
+
+USER root
+
+EXPOSE 8000
+
+ENTRYPOINT ["start-container"]

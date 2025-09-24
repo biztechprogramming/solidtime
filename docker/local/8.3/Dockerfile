@@ -55,10 +55,37 @@ RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.3
 RUN groupadd --force -g $WWWGROUP sail
 RUN useradd -ms /bin/bash --no-user-group -g $WWWGROUP -u 1337 sail
 
-COPY start-container /usr/local/bin/start-container
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY php.ini /etc/php/8.3/cli/conf.d/99-sail.ini
+COPY docker/local/8.3/start-container /usr/local/bin/start-container
+COPY docker/local/8.3/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/local/8.3/php.ini /etc/php/8.3/cli/conf.d/99-sail.ini
 RUN chmod +x /usr/local/bin/start-container
+
+# Copy application code (context is set to project root in docker-compose.yml)
+COPY --chown=sail:sail . /var/www/html
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /var/www/html/vendor /var/www/html/node_modules \
+    /var/www/html/storage/framework/cache \
+    /var/www/html/storage/framework/sessions \
+    /var/www/html/storage/framework/views \
+    /var/www/html/bootstrap/cache && \
+    chown -R sail:sail /var/www/html
+
+# Install dependencies as sail user
+USER sail
+WORKDIR /var/www/html
+
+# Configure git to trust the directory
+RUN git config --global --add safe.directory /var/www/html
+
+# Install Composer dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Install NPM dependencies and build assets
+RUN npm install && npm run build
+
+# Switch back to root for the entrypoint
+USER root
 
 EXPOSE 8000
 

@@ -1,0 +1,13 @@
+services:
+    laravel.test:
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        depends_on: []
+
+    # Override the pgsql service to effectively disable it
+    pgsql:
+        image: busybox
+        command: echo "PostgreSQL service disabled - using external database"
+        restart: "no"
+        networks: []
+        volumes: []
