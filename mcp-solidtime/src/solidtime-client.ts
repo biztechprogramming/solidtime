@@ -92,6 +92,17 @@ export class SolidtimeClient {
       return response.data.data;
     } catch (error: any) {
       console.error('API Error Response:', error.response?.data);
+
+      // Format detailed error message for better debugging
+      if (error.response?.status === 422 && error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const errorMessages = Object.entries(errors)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('; ');
+        throw new Error(`Validation failed: ${errorMessages}`);
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
       throw error;
     }
   }
@@ -290,5 +301,12 @@ export class SolidtimeClient {
       `/organizations/${this.organizationId}/members/me`
     );
     return response.data.data;
+  }
+
+  async getMembers(): Promise<{ data: any[]; meta: any }> {
+    const response = await this.api.get(
+      `/organizations/${this.organizationId}/members`
+    );
+    return response.data;
   }
 }

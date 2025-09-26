@@ -7,8 +7,9 @@ An MCP (Model Context Protocol) server for integrating with Solidtime time track
 ### Time Tracking
 - **Start Timer**: Begin tracking time for a project or task
 - **Stop Timer**: Stop the currently active time tracking
-- **Add Time Entry**: Add completed time entries with specific start/end times
+- **Add Time Entry**: Add completed time entries with specific start/end times (requires member_id)
 - **List Time Entries**: View recent time entries with filters
+- **List Members**: View all organization members to get member IDs
 
 ### Project Management
 - **List Projects**: View all available projects
@@ -95,13 +96,29 @@ Add this configuration:
 
 Replace the paths and credentials with your actual values.
 
+## Important: Time Entry Requirements
+
+When using `add-time-entry`, you MUST provide:
+1. **Date Format**: ISO 8601 format with timezone (e.g., "2025-09-25T14:00:00Z")
+2. **Required Fields**:
+   - `start`: Start time in ISO 8601 format
+   - `end`: End time in ISO 8601 format
+   - `billable`: MUST be `true` or `false` (this field is required!)
+3. **Member ID**: Either set `SOLIDTIME_DEFAULT_MEMBER_ID` in your config or provide `member_id` in the command
+
+### Getting Your Member ID
+
+To find your member ID:
+1. Check the Solidtime UI under Organization > Members
+2. Or use the Solidtime API: `GET /api/v1/organizations/{org_id}/members/me`
+
 ## Usage Examples
 
 Once configured, you can ask Claude to:
 
 - "Start tracking time for the Website Redesign project"
 - "Stop my current timer"
-- "Add 2 hours of work I did yesterday on the API Integration project"
+- "Add 2 hours of work I did yesterday on the API Integration project" (Note: must include billable: true/false)
 - "Show me my recent time entries"
 - "List all active projects"
 - "Create a new project called Mobile App Development"
@@ -109,6 +126,7 @@ Once configured, you can ask Claude to:
 - "Create a new client called Acme Corp"
 - "Show tasks for project ID xyz"
 - "Create a task 'Setup CI/CD pipeline' for project abc"
+- "Get help with time entry format" (uses the built-in help tool)
 
 ## Development
 

@@ -153,15 +153,14 @@ server.registerTool(
       project_id: z.string().optional().describe("ID of the project"),
       task_id: z.string().optional().describe("ID of the task"),
       tags: z.array(z.string()).optional().describe("Tags to apply"),
-      billable: z.boolean().optional().default(false).describe("Whether this time is billable"),
-      member_id: z.string().optional().describe("Member ID (uses default if not provided)")
+      billable: z.boolean().default(false).describe("Whether this time is billable"),
+      member_id: z.string().describe("Member ID (required - use list-members to find valid IDs)")
     }
   },
   async (args) => {
     try {
-      const memberId = args.member_id || SOLIDTIME_DEFAULT_MEMBER_ID;
-      if (!memberId) {
-        throw new Error("member_id is required or SOLIDTIME_DEFAULT_MEMBER_ID must be set");
+      if (!args.member_id) {
+        throw new Error("member_id is required. Use list-members to find valid member IDs.");
       }
 
       // Ensure date format matches API requirements (Y-m-d\TH:i:s\Z)
@@ -182,7 +181,7 @@ server.registerTool(
         task_id: args.task_id,
         tags: args.tags,
         billable: args.billable,
-        member_id: memberId
+        member_id: args.member_id
       });
 
       return {
@@ -458,6 +457,39 @@ server.registerTool(
   }
 );
 
+// Register Member Tools
+server.registerTool(
+  "list-members",
+  {
+    title: "List Members",
+    description: "List all members in the organization",
+    inputSchema: {}
+  },
+  async (args) => {
+    try {
+      const result = await solidtime.getMembers();
+      const members = result.data.map(member =>
+        `• ${member.name} (ID: ${member.id})${member.email ? ` - ${member.email}` : ''}`
+      ).join('\n');
+
+      return {
+        content: [{
+          type: "text",
+          text: members || "No members found"
+        }]
+      };
+    } catch (error: any) {
+      return {
+        content: [{
+          type: "text",
+          text: `Error listing members: ${error.message}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
 // Register Help Tool
 server.registerTool(
   "help",
@@ -488,6 +520,7 @@ server.registerTool(
 - **create-client**: Create a new client
 - **list-tasks**: List tasks for a project
 - **create-task**: Create a new task
+- **list-members**: List all organization members
 
 For specific help, use: help with topic "setup", "time-entry", or "troubleshooting"
 `;
@@ -529,8 +562,8 @@ For specific help, use: help with topic "setup", "time-entry", or "troubleshooti
 2. **Required Fields**:
    - **start**: Start time (ISO 8601)
    - **end**: End time (ISO 8601)
-   - **billable**: MUST be true or false (required!)
-   - **member_id**: Must be a valid member ID (or set SOLIDTIME_DEFAULT_MEMBER_ID)
+   - **billable**: true or false (defaults to false if not specified)
+   - **member_id**: REQUIRED - Must be a valid member ID (use list-members to find valid IDs)
 
 3. **Optional Fields**:
    - **description**: What you worked on
@@ -538,14 +571,19 @@ For specific help, use: help with topic "setup", "time-entry", or "troubleshooti
    - **task_id**: Link to a specific task
    - **tags**: Array of tags
 
+## Getting Your Member ID:
+1. Use list-members to see all organization members
+2. Find your name/email and copy the ID
+
 ## Example Commands:
-- Basic: add-time-entry(start: "2025-09-25T14:00:00Z", end: "2025-09-25T16:00:00Z", billable: true)
-- With project: add-time-entry(start: "2025-09-25T14:00:00Z", end: "2025-09-25T16:00:00Z", billable: true, project_id: "your-project-id", description: "Worked on feature X")
+- First: list-members() to get your member_id
+- Basic: add-time-entry(start: "2025-09-25T14:00:00Z", end: "2025-09-25T16:00:00Z", member_id: "your-member-id")
+- With project: add-time-entry(start: "2025-09-25T14:00:00Z", end: "2025-09-25T16:00:00Z", member_id: "your-member-id", billable: true, project_id: "your-project-id", description: "Worked on feature X")
 
 ## Common Errors:
-- **422 Error**: Check date format and ensure billable field is included
+- **422 Error**: Check date format and member_id (use list-members to find valid IDs)
 - **401 Error**: API token is invalid or expired
-- **"Member not found"**: member_id doesn't exist - check your SOLIDTIME_DEFAULT_MEMBER_ID
+- **"Member not found"**: member_id doesn't exist - use list-members to find valid member IDs
 `;
     } else if (topic === "troubleshooting") {
       helpText = `
